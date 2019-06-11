@@ -4,12 +4,13 @@
 
 use portaudio as pa;
 use std::error::Error;
-const SAMPLE_RATE: f32 = 48000.0;
-const OUT_FRAMES: usize = 64;
+const SAMPLE_RATE: usize = 48000;
 const TAU: f32 = 2.0 * std::f32::consts::PI;
 
 /// Gather samples and post for playback.
-pub fn play(mut samples: Box<Iterator<Item=f32>>) -> Result<(), Box<Error>> {
+pub fn play(mut samples: Box<Iterator<Item=f32>>, out_frames: usize)
+            -> Result<(), Box<Error>>
+{
 
     // Create and initialize audio output.
     let out = pa::PortAudio::new()?;
@@ -27,7 +28,7 @@ pub fn play(mut samples: Box<Iterator<Item=f32>>) -> Result<(), Box<Error>> {
     loop {
         // Build a sample buffer.
         let buf: Vec<i16> = (&mut samples)
-            .take(OUT_FRAMES)
+            .take(out_frames)
             .map(|s| f32::floor(s * 32768.0f32) as i16)
             .collect();
 
@@ -40,7 +41,7 @@ pub fn play(mut samples: Box<Iterator<Item=f32>>) -> Result<(), Box<Error>> {
         })?;
 
         // Handle end condition.
-        if buf.len() < OUT_FRAMES {
+        if buf.len() < out_frames {
             break;
         }
     }
@@ -52,10 +53,11 @@ pub fn play(mut samples: Box<Iterator<Item=f32>>) -> Result<(), Box<Error>> {
 }
 
 fn main() {
-    let mut signal = vec![0.0; 4096];
+    let out_frames = std::env::args().nth(1).unwrap().parse().unwrap();
+    let mut signal = vec![0.0; 5 * SAMPLE_RATE];
     for (i, s) in signal.iter_mut().enumerate() {
-        *s = 0.5 * f32::sin(1000.0 * TAU * i as f32 / SAMPLE_RATE);
+        *s = 0.5 * f32::sin(1000.0 * TAU * i as f32 / SAMPLE_RATE as f32);
     }
     let samples = Box::new(signal.into_iter());
-    play(samples).unwrap();
+    play(samples, out_frames).unwrap();
 }
